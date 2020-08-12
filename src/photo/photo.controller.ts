@@ -1,4 +1,8 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 } from 'uuid';
 import { PhotoService } from './photo.service';
 import { Photo } from './photo.entity';
 
@@ -19,7 +23,27 @@ export class PhotoController {
   }
 
   @Post()
-  async create(@Body() photo: Photo): Promise<any> {
-    return await this.service.create(photo);
+  @UseInterceptors(FilesInterceptor('files', 20, {
+    storage: diskStorage({
+      destination: './upload/photos',
+      filename: (req, file, cb) => {
+        const ext = extname(file.originalname);
+        switch (ext.toLowerCase()) {
+          case '.jpg':
+            return cb(null, `${v4()}.jpg`);
+          case '.jpeg':
+            return cb(null, `${v4()}.jpeg`);
+          case '.gif':
+            return cb(null, `${v4()}.gif`);
+          case '.png':
+            return cb(null, `${v4()}.png`);
+          default:
+            return cb(new Error('Only images are allowed'))
+        }
+      }
+    })
+  }))
+  async create(@Body() photo: Photo, @UploadedFiles() files: any): Promise<any> {
+    return await this.service.create(photo, files);
   }
 }
